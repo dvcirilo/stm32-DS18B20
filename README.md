@@ -9,11 +9,11 @@ STM32F1 is used.
 The library is designed to work with the widespread Maxim (Dallas) DS18B20
 temperature sensors according to the OneWire protocol.
 
-The library [libopencm3](https://libopencm3.github.io/) was chosen as the basis
-for the implementation.  libopencm3 is a very good basis for STM32 programming,
-however, due to poor documentation it is slightly underrated by hobbyists. The
-resulting code is easy to read, compact, and efficient compared to SPL and HAL
-from ST Microelectronics.
+The library [libopencm3] was chosen as the basis for the implementation.
+libopencm3 is a very good basis for STM32 programming, however, due to poor
+documentation it is slightly underrated by hobbyists. The resulting code is
+easy to read, compact, and efficient compared to SPL and HAL from ST
+Microelectronics.
 
 The OneWire library implements SKIP, SEARCH, MATCH, READ, READ SCRATCHPAD,
 CONVERT TEMPERATURE, RECALL E2 and other commands and works on the
@@ -118,5 +118,5 @@ OneWire ow;
 
 If you want to increase/decrease the number of devices about which default
 information will be saved
-
-[using hardware USART/UART]: (https://www.maximintegrated.com/en/app-notes/index.mvp/id/214)
+[libopencm3]: https://libopencm3.github.io/
+[using hardware USART/UART]: https://www.maximintegrated.com/en/app-notes/index.mvp/id/214
