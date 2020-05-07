@@ -116,7 +116,11 @@ information about devices on the bus:
 OneWire ow;
 ```
 
-If you want to increase/decrease the number of devices about which default
-information will be saved
+If you want to increase/decrease the number of devices about which the default
+information will be saved, determine BEFORE connecting OneWire.h
+`MAXDEVICES_ON_THE_BUS`
+
+After that, everything is ready to use.
+
 [libopencm3]: https://libopencm3.github.io/
 [using hardware USART/UART]: https://www.maximintegrated.com/en/app-notes/index.mvp/id/214
