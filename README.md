@@ -119,4 +119,4 @@ OneWire ow;
 If you want to increase/decrease the number of devices about which default
 information will be saved
 
-[using hardware USART/UART](https://www.maximintegrated.com/en/app-notes/index.mvp/id/214)
+[using hardware USART/UART]: (https://www.maximintegrated.com/en/app-notes/index.mvp/id/214)
