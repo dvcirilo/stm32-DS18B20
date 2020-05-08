@@ -1,13 +1,17 @@
 /**
     @author Stanislav Lakhtin
     @date   11.07.2016
-    @brief  Реализация протокола 1wire на базе библиотеки libopencm3 для микроконтроллера STM32F103
+    @brief  Implementation of the 1wire protocol based on the libopencm3
+    library for the STM32F103 microcontroller
 
-            Возможно, библиотека будет корректно работать и на других uK (требуется проверка).
-            Общая идея заключается в использовании аппаратного USART uK для иммитации работы 1wire.
+    Perhaps the library will work correctly on other uKs (verification is
+    required).
+    The general idea is to use USART uK hardware to simulate 1wire operation.
 
-            Подключение устройств осуществляется на выбранный USART к TX пину, который должен быть подтянут к линии питания сопротивлением 4.7К.
-            Реализация библиотеки осуществляет замыкание RX на TX внутри uK, оставляя ножку RX доступной для использования в других задачах.
+    Devices are connected to the selected USART to TX pin, which should be
+    pulled up to a 4.7K power line.
+    The implementation of the library closes the RX to TX inside uK, leaving
+    the RX leg available for use in other tasks.
 
  */
 #ifndef STM32_DS18X20_ONEWIRE_H
@@ -82,8 +86,10 @@ typedef struct {
     uint8_t lastROM[8];
 } OneWire;
 
-void usart_enable_halfduplex(uint32_t usart); /// вспомогательная функция по настройке HalfDuplex на USART
-void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits, uint32_t mode, uint32_t parity,
+// auxiliary function for setting up HalfDuplex on USART
+void usart_enable_halfduplex(uint32_t usart);
+void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits,
+                 uint32_t stopbits, uint32_t mode, uint32_t parity,
                  uint32_t flowcontrol);
 
 uint16_t owResetCmd(OneWire *ow);
