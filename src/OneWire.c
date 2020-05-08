@@ -2,23 +2,31 @@
 #include <stdio.h>
 
 /**
-    @author Stanislav Lakhtin
-    @date   11.07.2016
-    @brief  Реализация протокола 1wire на базе библиотеки libopencm3 для микроконтроллера STM32F103
+ *@author Stanislav Lakhtin
+ *@date   11.07.2016
+ *@brief Implementation of the 1-Wire protocol based on the libopencm3
+ *library for the STM32F103 microcontroller
+ *
+ *Perhaps the library will work correctly on other µC (verification is
+ *required).
+ *Verification is necessary to verify that the UART/USART settings for
+ *operation are correct.
+ *The general idea is to use the µC USART hardware to simulate 1-Wire
+ *operation.
+ *
+ *Devices are connected to the selected USART to TX pin, which should be
+ *pulled up to the 4.7K power line.
+ *The implementation of the library connects RX to TX inside the
+ *microcontroller, leaving the RX pin available for use in other tasks.
+ *
+ *The implementation of the library suggests the possible simultaneous work
+ *as with independent buses immediately with all possible UART/USART in the
+ *microcontroller. In this case, all tires (up to 5 pieces) will be addressed
+ *and interrogated individually
+*/
 
-            Возможно, библиотека будет корректно работать и на других uK (требуется проверка).
-            Проверка необходима, чтобы убедиться в корректности настройки UART/USART для работы
-            в полудуплексном режиме
-            Общая идея заключается в использовании аппаратного USART uK для иммитации работы 1wire.
-
-            Подключение устройств осуществляется на выбранный USART к TX пину, который должен быть подтянут к линии питания сопротивлением 4.7К.
-            Реализация библиотеки осуществляет замыкание RX на TX внутри uK, оставляя ножку RX доступной для использования в других задачах.
-
-            Реализация библиотеки предполагает возможную одновременную работу как с независимыми шинами сразу со всеми
-            возможными UART/USART в микроконтроллере. При этом все шины (до 5 штук) будут адресоваться и опрашиваться индивидуально
- */
-
-/// Метод реализует переключение работы USART в half-duplex режим. Метод не работает для 1wire реализации
+// The method implements switching USART to half-duplex mode. Method does not
+// work for 1wire implementation
 void usart_enable_halfduplex(uint32_t usart) {
     USART_CR2(usart) &= ~USART_CR2_LINEN;
     USART_CR2(usart) &= ~USART_CR2_CLKEN;
@@ -27,16 +35,15 @@ void usart_enable_halfduplex(uint32_t usart) {
     USART_CR3(usart) |= USART_CR3_HDSEL;
 }
 
-/** Метод реализует переключение выбранного USART в нужный режим
- * @param[in] usart Выбранный аппаратный usart -- (USART1, USART2, etc...)
- * @param[in] baud Скорость в бодах (9600, 115200, etc...)
- * @param[in] bits Биты данных (8,9)
- * @param[in] stopbits СтопБиты (USART_STOPBITS_1, USART_STOPBITS_0)
- * @param[in] mode Режим работы (USART_MODE_TX_RX, etc...)
- * @param[in] parity Контроль чётности (USART_PARITY_NONE, etc...)
- * @param[in] flowcontrol Управление потоком (USART_FLOWCONTROL_NONE, etc...)
- *
- */
+/** The method implements switching the selected USART to the desired mode
+ *    @param[in] usart Selected hardware usart - (USART1, USART2, etc ...)
+ *    @param[in] baud Baud rate (9600, 115200, etc ...)
+ *    @param[in] bits Data bits (8.9)
+ *    @param[in] stopbits Stop bits (USART_STOPBITS_1, USART_STOPBITS_0)
+ *    @param[in] mode Operating mode (USART_MODE_TX_RX, etc ...)
+ *    @param[in] parity Parity (USART_PARITY_NONE, etc...)
+ *    @param[in] flowcontrol Flow Control (USART_FLOWCONTROL_NONE, etc...)
+*/
 
 uint8_t getUsartIndex(uint32_t usart);
 
@@ -48,7 +55,7 @@ void usart_setup(uint32_t usart, uint32_t baud, uint32_t bits, uint32_t stopbits
     nvic_disable_irq(irqNumber);
     usart_disable(usart);
 
-    // Настраиваем
+    // Customize
     usart_set_baudrate(usart, baud);
     usart_set_databits(usart, bits);
     usart_set_stopbits(usart, stopbits);
@@ -80,27 +87,28 @@ void owInit(OneWire *ow) {
 
 void owReadHandler(uint32_t usart) {
     uint8_t index = getUsartIndex(usart);
-    /* Проверяем, что мы вызвали прерывание из-за RXNE. */
+    /* Check that we caused an interrupt due to RXNE. */
     if (((USART_CR1(usart) & USART_CR1_RXNEIE) != 0) &&
         ((USART_SR(usart) & USART_SR_RXNE) != 0)) {
 
-        /* Получаем данные из периферии и сбрасываем флаг*/
+        /* We get data from the periphery and reset the flag */
         rc_buffer[index] = usart_recv_blocking(usart);
         recvFlag &= ~(1 << index);
     }
 }
 
-/** Реализация RESET на шине 1wire
+/** Implementation of RESET on 1wire bus
  *
- * @param usart -- выбранный для реализации 1wire usart
- * @return Возвращает 1 если на шине кто-то есть и 0 в противном случае
+* @param usart -- selected to implement 1wire usart
+* @return Returns 1 if someone is on the bus and 0 otherwise
+ *
  */
 
 uint16_t owResetCmd(OneWire *ow) {
     usart_setup(ow->usart, 9600, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
 
     owSend(ow, 0xF0); // Send RESET
-    uint16_t owPresence = owEchoRead(ow); // Ждём PRESENCE на шине и вовзращаем, что есть
+    uint16_t owPresence = owEchoRead(ow); // We are waiting for PRESENCE on the bus and return what is
 
     usart_setup(ow->usart, 115200, 8, USART_STOPBITS_1, USART_MODE_TX_RX, USART_PARITY_NONE, USART_FLOWCONTROL_NONE);
     return owPresence;
@@ -155,9 +163,9 @@ uint8_t *byteToBits(uint8_t ow_byte, uint8_t *bits) {
 }
 
 /**
- * Метод пересылает последовательно 8 байт по одному на каждый бит в data
- * @param usart -- выбранный для эмуляции 1wire USART
- * @param d -- данные
+    * The method sends sequentially 8 bytes, one for each bit in data
+    * @param usart - selected to emulate 1wire USART
+    * @param d - data
  */
 void owSendByte(OneWire *ow, uint8_t d) {
     uint8_t data[8];
@@ -182,22 +190,22 @@ uint8_t bitsToByte(uint8_t *bits) {
     return target_byte;
 }
 
-/* Подсчет CRC8 массива mas длиной Len */
+/* Counting CRC8 mas array Len length */
 uint8_t owCRC(uint8_t *mas, uint8_t Len) {
     uint8_t i, dat, crc, fb, st_byt;
     st_byt = 0;
     crc = 0;
     do {
         dat = mas[st_byt];
-        for (i = 0; i < 8; i++) {  // счетчик битов в байте
+        for (i = 0; i < 8; i++) {  // byte bit counter
             fb = crc ^ dat;
             fb &= 1;
             crc >>= 1;
             dat >>= 1;
-            if (fb == 1) crc ^= 0x8c; // полином
+            if (fb == 1) crc ^= 0x8c; // polynomial
         }
         st_byt++;
-    } while (st_byt < Len); // счетчик байтов в массиве
+    } while (st_byt < Len); // byte counter in array
     return crc;
 }
 
@@ -210,7 +218,7 @@ uint8_t owCRC8(RomCode *rom) {
  * return 0 if hasn't
  * return -1 if error reading happened
  *
- * переделать на функции обратного вызова для реакции на ошибки
+ * redo callback functions to respond to errors
  */
 int hasNextRom(OneWire *ow, uint8_t *ROM) {
     if (owResetCmd(ow) == ONEWIRE_NOBODY) {
@@ -224,9 +232,9 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
         int byteNum = ui32BitNumber / 8;
         uint8_t *current = (ROM) + byteNum;
         uint8_t cB, cmp_cB, searchDirection = 0;
-        owSend(ow, OW_READ); // чтение прямого бита
+        owSend(ow, OW_READ); // read direct bit
         cB = owReadSlot(owEchoRead(ow));
-        owSend(ow, OW_READ); // чтение инверсного бита
+        owSend(ow, OW_READ); // read inverse bit
         cmp_cB = owReadSlot(owEchoRead(ow));
         if (cB == cmp_cB && cB == 1)
             return -1;
@@ -245,7 +253,7 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
                     zeroFork = ui32BitNumber;
             }
         }
-        // сохраняем бит
+        // save the bit
         if (searchDirection)
             *(current) |= 1 << ui32BitNumber % 8;
         uint8_t answerBit = (uint8_t) ((searchDirection == 0) ? WIRE_0 : WIRE_1);
@@ -259,7 +267,8 @@ int hasNextRom(OneWire *ow, uint8_t *ROM) {
     return ow->lastDiscrepancy > 0;
 }
 
-// Возвращает количество устройств на шине или код ошибки, если значение меньше 0
+// Returns the number of devices on the bus or an error code if the value is
+// less than 0
 int owSearchCmd(OneWire *ow) {
     int device = 0, nextROM;
     owInit(ow);
@@ -337,9 +346,10 @@ void owWriteDS18B20Scratchpad(OneWire *ow, RomCode *rom, uint8_t th, uint8_t tl,
 }
 
 /**
- * Get last mesaured temperature from DS18B20 or DS18S20. These temperature MUST be measured in previous
- * opearions. If you want to measure new value you can set reSense in true. In this case next invocation
- * that method will return value calculated in that step.
+ * Get last measured temperature from DS18B20 or DS18S20. These temperature
+ * MUST be measured in previous operations. If you want to measure new value
+ * you can set reSense in true. In this case next invocation that method will
+ * return value calculated in that step.
  * @param ow -- OneWire bus pointer
  * @param rom -- selected device
  * @param reSense -- do you want resense temp for next time?
