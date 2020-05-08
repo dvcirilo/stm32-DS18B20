@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-// Должно быть объявлено ДО include "OneWire.h", чтобы был добавлен обработчик соответствующего прерывания
+// Must be declared BEFORE include "OneWire.h" so that an appropriate interrupt handler is added
 //#define ONEWIRE_UART5
 //#define ONEWIRE_UART4
 #define ONEWIRE_USART3
@@ -31,7 +31,7 @@ static void clock_setup(void) {
   rcc_periph_clock_enable(RCC_AFIO);
 
   /* Enable clocks for USARTs. */
-  rcc_periph_clock_enable(RCC_USART2); //включить, если используется отладка
+  rcc_periph_clock_enable(RCC_USART2); // enable if debugging is used
   rcc_periph_clock_enable(RCC_USART3);
 }
 
@@ -65,7 +65,7 @@ static void gpio_setup(void) {
   AFIO_MAPR |= AFIO_MAPR_SWJ_CFG_FULL_SWJ_NO_JNTRST;
 
   /* Preconf USART2 for output*/
-  // Настраиваем USART для отладки
+// Set up USART for debugging
   usart_set_baudrate(USART_CONSOLE, 115200);
   usart_set_databits(USART_CONSOLE, 8);
   usart_set_stopbits(USART_CONSOLE, USART_STOPBITS_1);
@@ -91,7 +91,7 @@ int main(void) {
 
   while (1) {
     if (owResetCmd(&ow) != ONEWIRE_NOBODY) {    // is anybody on the bus?
-      int devices = owSearchCmd(&ow);           // получить ROMid всех устройст на шине или вернуть код ошибки
+      int devices = owSearchCmd(&ow); // get the ROMid of all devices on the bus or return an error code
       if (devices <= 0) {
         printf("\n\rError has happened!");
         pDelay = 8000000;
@@ -102,7 +102,7 @@ int main(void) {
       }
       printf("\n\rfound %d devices on 1-wire bus", devices);
       if (devices < 1)
-        continue; // внезапно что-то могло "оторваться" из датчиков
+        continue; // suddenly something could "come off" from the sensors
       i = 0;
       for (; i < devices; i++) {
         RomCode *r = &ow.ids[i];
@@ -113,12 +113,12 @@ int main(void) {
                r->code[2], r->code[1], r->code[0], r->crc);
         printf(crcOK);
         if (crc != r->crc) {
-          printf("\n\r can't read cause CNC error");
+          printf("\n\r can't read cause CRC error");
           continue;
         }
         switch (r->family) {
           case DS18B20:
-            // будет возвращено значение предыдущего измерения!
+        // the value of the previous dimension will be returned!
             t = readTemperature(&ow, &ow.ids[i], true);
             printf("\n\rDS18B20 , Temp: %3d.%dC", t.inCelsus, t.frac);
             break;
